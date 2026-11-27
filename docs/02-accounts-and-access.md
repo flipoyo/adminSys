@@ -103,15 +103,24 @@ ssh-copy-id -o PubkeyAuthentication=no -i ~/.ssh/<key>.pub alice@<server-ip>   #
 ssh -o IdentitiesOnly=yes -i ~/.ssh/<key> alice@<server-ip>   # must NOT ask the account password
 ```
 
-`PubkeyAuthentication=no` / `IdentitiesOnly=yes` avoid `Too many authentication failures`
-(section 2). To make it permanent, in `~/.ssh/config` on the user's computer:
+`PubkeyAuthentication=no` is only for the **password step**: it stops the agent from
+offering every key and hitting `Too many authentication failures` (section 2). It is not a
+setting to keep. Once the key works, **remove the option**: log in with `IdentitiesOnly=yes`
+and the one key. A key-only login must never need `PubkeyAuthentication=no`; if it does, the
+key is not installed (check `~/.ssh/authorized_keys`, see [03](03-ssh-authorized-keys.md)).
 
+**Making the key and the client config (later).** The `ssh-keygen` line above is the minimum.
+To generate keys with a clear name (host, platform, e-mail) and have the matching
+`~/.ssh/config` written for you, use
+[flipoyo/sshKeyGen](https://github.com/flipoyo/sshKeyGen) on the user's computer:
+
+```bash
+pixi run genkey --email you@example.org --server <name> --user alice --host <laptop>
 ```
-Host <server-ip>
-    User alice
-    IdentitiesOnly yes
-    IdentityFile ~/.ssh/<key>
-```
+
+It writes the `Host` block (`IdentitiesOnly yes`, `IdentityFile`) that you would otherwise
+type by hand, then prints the public key to install. Do not edit `~/.ssh/config` by hand
+once genkey manages it.
 
 The first connection asks to trust the server fingerprint: compare it with the one in the
 provider's console when you can, then answer `yes`.
