@@ -74,6 +74,19 @@ sudo usermod -L <provider-user>           # lock its password
 sudo usermod -s /usr/sbin/nologin <provider-user>
 ```
 
+**Restore it later** (lost admin access, provider support, a rescue script that expects it):
+
+```bash
+sudo usermod -U <provider-user>                  # unlock the password
+sudo usermod -s /bin/bash <provider-user>        # give the shell back
+sudo passwd <provider-user>                      # set a new password, the old one is not kept
+sudo passwd -S <provider-user>                   # P = usable, L = locked
+```
+
+`usermod -L` only locks the **password**: SSH key login would still work if a key were
+installed, so also set `nologin` as above if the account must be closed for real. Keep this
+reversible path rather than `userdel`; the account is back in three commands.
+
 Then install your own key (section 4) and create a **second admin** (section 3): one broken
 account can then repair the other.
 
