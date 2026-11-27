@@ -36,10 +36,16 @@ The provider gives you one account and one password (often through a link that e
 *link* expires, not the password). Use it once.
 
 ```bash
-ssh <provider-user>@<server-ip>
+ssh -o PubkeyAuthentication=no <provider-user>@<server-ip>
 sudo useradd -m -s /bin/bash -G <admin-group> you
 sudo passwd you
+id you                                    # <admin-group> must be in the list
 ```
+
+`Too many authentication failures` before any password prompt: your ssh-agent offered more
+keys than the server allows (`MaxAuthTries`, about 6). Nothing is wrong with the server or
+the account. `-o PubkeyAuthentication=no` skips the keys and asks the password; once your
+own key is installed, use `-o IdentitiesOnly=yes -i ~/.ssh/<key>` (see section 4).
 
 Then, from a **second terminal**, keeping the first one open:
 
@@ -49,7 +55,19 @@ sudo -l                                   # must list (ALL) ALL
 sudo whoami                               # root
 ```
 
-Only when that works, retire the provider account (locking is reversible, deleting is not):
+`Sorry, user you may not run sudo` means the user is not in the admin group: the `-G`
+option was forgotten, or the other family's name was used (`wheel` on Debian, `sudo` on rhel).
+Repair it from the provider account, which still has sudo, then **log `you` out and in**:
+
+```bash
+sudo usermod -aG <admin-group> you        # -a: add, never replace
+id you; getent group <admin-group>
+```
+
+`sudo: command not found` (minimal Debian): `apt install sudo` as root or from the provider
+account first.
+
+Only when `sudo whoami` works, retire the provider account (locking is reversible, deleting is not):
 
 ```bash
 sudo usermod -L <provider-user>           # lock its password
@@ -80,9 +98,23 @@ administer the machine.
 From the user's computer (a key never leaves the computer it was made on):
 
 ```bash
-ssh-copy-id -i ~/.ssh/<key>.pub alice@<server-ip>   # asks the temporary password once
-ssh -i ~/.ssh/<key> alice@<server-ip>               # must NOT ask the account password
+ssh-keygen -t ed25519 -f ~/.ssh/<key>                # once per computer, with a passphrase
+ssh-copy-id -o PubkeyAuthentication=no -i ~/.ssh/<key>.pub alice@<server-ip>   # asks the password once
+ssh -o IdentitiesOnly=yes -i ~/.ssh/<key> alice@<server-ip>   # must NOT ask the account password
 ```
+
+`PubkeyAuthentication=no` / `IdentitiesOnly=yes` avoid `Too many authentication failures`
+(section 2). To make it permanent, in `~/.ssh/config` on the user's computer:
+
+```
+Host <server-ip>
+    User alice
+    IdentitiesOnly yes
+    IdentityFile ~/.ssh/<key>
+```
+
+The first connection asks to trust the server fingerprint: compare it with the one in the
+provider's console when you can, then answer `yes`.
 
 Admin alternative (the user sends the `.pub` line): see [03](03-ssh-authorized-keys.md),
 case C. One key per computer: a lost laptop means deleting one line, not changing everything.
@@ -117,6 +149,12 @@ sudo visudo -f /etc/sudoers.d/alice     # one line:  alice ALL=(root) /usr/bin/s
 ```
 
 Never give a user a shell through sudo.
+
+**Diagnose sudo.** As the user: `sudo -l` lists what is allowed; `id` shows the groups
+(a group added in this session is not visible until a new login). As an admin:
+`getent group <admin-group>` and `ls /etc/sudoers.d/`. Failure → cause: `may not run sudo`
+→ not in the group; `command not found` → package missing; `is not in the sudoers file` →
+the admin group has no sudoers rule (`sudo visudo`, line `%<admin-group> ALL=(ALL:ALL) ALL`).
 
 ## 6. Shared folders (groups + ACL)
 
@@ -203,9 +241,9 @@ Run it after each arrival or departure, and every few months.
 
 ## Checklist: new user
 
-1. `useradd -m -s /bin/bash`, temporary `passwd` + `passwd -e`
+1. `useradd -m -s /bin/bash` (`-G <admin-group>` for an admin), temporary `passwd` + `passwd -e`, `id` to check
 2. `usermod -aG` team group (and `ssh-users` if you use `AllowGroups`)
-3. They run `ssh-copy-id` and test key login
+3. They run `ssh-copy-id` and test key login (`IdentitiesOnly=yes`); admins also test `sudo whoami`
 4. Quota set on `/home`
 5. Access to shared folders tested: `sudo -u <user> touch ...`
 6. When every user has a key: `ssh-harden`
