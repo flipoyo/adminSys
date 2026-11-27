@@ -1,6 +1,8 @@
 [workspace]
 name = "adminsys"
 version = "0.1.0"
+license = "Apache-2.0"
+license-file = "LICENSE"
 description = "Administration of Linux-like systems: portable tooling, with the system-dependent part isolated in os/"
 channels = ["conda-forge"]
 # git-crypt is published on conda-forge for linux-64 and macOS only (no linux-aarch64).
