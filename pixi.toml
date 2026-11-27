@@ -1,0 +1,30 @@
+[workspace]
+name = "adminsys"
+version = "0.1.0"
+description = "Administration of Linux-like systems: portable tooling, with the system-dependent part isolated in os/"
+channels = ["conda-forge"]
+# git-crypt is published on conda-forge for linux-64 and macOS only (no linux-aarch64).
+# On such a machine use the distro package: `sudo bin/sys base` installs it.
+platforms = ["linux-64", "osx-arm64"]
+
+# The tools an admin needs in his own shell, identical on every machine.
+# pixi cannot install daemons, firewalls or kernels: those stay in os/<family>/.
+[dependencies]
+git = "*"
+git-crypt = "*"        # transparent encryption of secrets/ in a public repo
+gnupg = "*"            # share the git-crypt key by GPG identity
+openssh = "*"          # ssh, ssh-keygen, ssh-agent, ssh-add, ssh-copy-id
+shellcheck = "*"       # lint the scripts of this repository
+
+# `sys` is the single entry point (bin/sys). Arguments are forwarded:
+#   pixi run sys detect
+#   pixi run sys ssh-agent
+# Root commands need the system layer and root rights; call the script directly:
+#   sudo bin/sys base | update | ssh-harden
+[tasks]
+sys = "bash bin/sys"
+detect = "bash bin/sys detect"
+ssh-agent = "bash bin/sys ssh-agent"
+crypt-init = "bash bin/sys crypt-init"
+check-public = "bash bin/sys check-public"
+lint = "bash common/check-syntax.sh"

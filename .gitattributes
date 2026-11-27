@@ -1,0 +1,7 @@
+# git-crypt: everything under secrets/ is encrypted on commit and decrypted on checkout.
+# Enable with:  bin/sys crypt-init   (BEFORE the first commit of a secret).
+secrets/** filter=git-crypt diff=git-crypt
+
+# These must stay readable, or nobody can see how to unlock.
+secrets/README.md !filter !diff
+.gitattributes !filter !diff

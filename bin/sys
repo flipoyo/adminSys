@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# bin/sys — single entry point of adminSys. Pure bash: it must work BEFORE pixi
+# exists on the machine (bootstrap), so it depends on nothing but coreutils.
+#
+#   sys detect                       what system is this, and which os/ layer applies
+#   sys base [--with G]... [--no-services]   install the base tooling      (root)
+#   sys update [--all] [--reboot]    apt/dnf update + upgrade + cleanup     (root)
+#   sys pixi                         install pixi into /usr/local/bin       (root)
+#   sys ssh-agent [--linger|--uninstall]     per-user ssh-agent             (user)
+#   sys ssh-harden [--yes]           key-only SSH, no root login            (root)
+#   sys crypt-init [--gpg-user ID]...        enable git-crypt for secrets/  (user)
+#   sys check-public                 scan this repo before making it public
+#   sys help
+#
+# With pixi:  pixi run sys <command>      (root commands: sudo bin/sys <command>)
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+export ADMINSYS_ROOT="$ROOT"
+# shellcheck source=../lib/common.sh
+source "$ROOT/lib/common.sh"
+
+usage() { sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+  detect)
+    load_os
+    printf 'adminSys     : %s\n' "$ADMINSYS_VERSION"
+    printf 'family       : %s  (%s)\n' "$FAMILY" "$OS_LABEL"
+    printf 'pretty name  : %s\n' "$( . /etc/os-release 2>/dev/null && echo "${PRETTY_NAME:-?}" )"
+    printf 'pkg manager  : %s\n' "$OS_PKG_MANAGER"
+    printf 'admin group  : %s\n' "$OS_ADMIN_GROUP"
+    printf 'ssh service  : %s\n' "$OS_SSH_SERVICE"
+    printf 'MAC          : %s\n' "$OS_MAC"
+    printf 'os layer     : os/%s/\n' "$FAMILY"
+    ;;
+  base)         exec bash "$ROOT/common/base.sh" "$@" ;;
+  update)       exec bash "$ROOT/common/update.sh" "$@" ;;
+  pixi)         exec bash "$ROOT/common/pixi-install.sh" "$@" ;;
+  ssh-agent)    exec bash "$ROOT/common/ssh-agent-user.sh" "$@" ;;
+  ssh-harden)   exec bash "$ROOT/common/ssh-harden.sh" "$@" ;;
+  crypt-init)   exec bash "$ROOT/common/crypt-init.sh" "$@" ;;
+  check-public) exec bash "$ROOT/common/check-public.sh" "$@" ;;
+  help|-h|--help) usage ;;
+  *) echo "sys: unknown command '$cmd'" >&2; usage >&2; exit 2 ;;
+esac

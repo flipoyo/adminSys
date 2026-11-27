@@ -1,0 +1,15 @@
+# pixi
+.pixi/
+
+# never commit key material, whatever its name
+*.key
+*.pem
+*.glyph
+id_ed25519*
+id_rsa*
+*.age
+
+# logs and scratch
+*.log
+*.tmp
+*.bak
